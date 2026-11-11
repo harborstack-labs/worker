@@ -23,3 +23,17 @@ func TestWaitForInterruptLogsShutdown(t *testing.T) {
 		t.Fatalf("missing shutdown log: %q", buf.String())
 	}
 }
+
+func TestWaitForInterruptCancelDoesNotLogShutdown(t *testing.T) {
+	var buf bytes.Buffer
+	cancel := make(chan struct{})
+	close(cancel)
+
+	err := waitForInterrupt(log.NewLogfmtLogger(&buf), make(chan os.Signal), cancel)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if buf.Len() != 0 {
+		t.Fatalf("unexpected log output: %q", buf.String())
+	}
+}
