@@ -277,17 +277,24 @@ func main() {
 		g.Add(func() error {
 			c := make(chan os.Signal, 1)
 			signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-			select {
-			case sig := <-c:
-				return fmt.Errorf("received signal %s", sig)
-			case <-cancelInterrupt:
-				return nil
-			}
+			return waitForInterrupt(logger, c, cancelInterrupt)
 		}, func(error) {
 			close(cancelInterrupt)
 		})
 	}
 	logger.Log("exit", g.Run())
+}
+
+// waitForInterrupt blocks until a signal arrives or cancel is closed. It logs
+// when graceful shutdown begins due to a signal.
+func waitForInterrupt(logger log.Logger, c <-chan os.Signal, cancel <-chan struct{}) error {
+	select {
+	case sig := <-c:
+		logger.Log("msg", "graceful shutdown started", "signal", sig.String())
+		return fmt.Errorf("received signal %s", sig)
+	case <-cancel:
+		return nil
+	}
 }
 
 func usageFor(fs *flag.FlagSet, short string) func() {
